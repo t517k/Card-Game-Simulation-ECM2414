@@ -38,5 +38,7 @@ public class CardGame {
         }
     }
 
-    public Boolean checkPack(int playerTotal, String packPath) {}
+    public Boolean checkPack(int playerTotal, String packPath) {
+
+    }
 }
