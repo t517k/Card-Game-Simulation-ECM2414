@@ -1,20 +1,42 @@
 import java.util.ArrayList;
 import java.util.Scanner;
+import java.io.File;
+import java.io.FileNotFoundException;
 
 public class CardGame {
-    private ArrayList<Card> pack;
-    private ArrayList<Card> decks;
-    private int playerTotal;
-    private int deckTotal;
-    private String packPath;
+    ArrayList<Card> pack;
+    ArrayList<Card> decks;
+    int playerTotal;
+    int deckTotal;
+    String packPath;
 
     public static void main(String[] args) {
+        CardGame currentGame = new CardGame();
         Scanner in = new Scanner(System.in);
         System.out.println("Game Start!");
-        System.out.println("Enter number of players:");
-        int playerTotal = in.nextInt();
+        while (true) {
+            System.out.println("Enter number of players:");
+            int input = in.nextInt();
+            if (input < 1 || )
+        }
+
         System.out.println("Enter path of pack to load:");
         String packPath = in.next();
 
     }
+
+    public void loadPack(int playerTotal, String packPath) {
+        File packFile = new File(packPath);
+        try(Scanner fileReader = new Scanner(packFile)) {
+            while (fileReader.hasNextLine()) {
+                int cardValue = fileReader.nextInt();
+                Card card = new Card(playerTotal, cardValue);
+                pack.add(card);
+            }
+        } catch (FileNotFoundException e) {
+            System.out.println("File not found!");
+        }
+    }
+
+    public Boolean checkPack(int playerTotal, String packPath) {}
 }
