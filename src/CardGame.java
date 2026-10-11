@@ -16,12 +16,12 @@ public class CardGame {
         System.out.println("Game Start!");
         while (true) {
             System.out.println("Enter number of players:");
-            int input = in.nextInt();
+            int input = in.nextInt(); //change input to numPlayers so that it is clearer?
             if (input < 1 || )
         }
-
         System.out.println("Enter path of pack to load:");
         String packPath = in.next();
+        //Thread[] playerThreads = new Thread[]
 
     }
 
