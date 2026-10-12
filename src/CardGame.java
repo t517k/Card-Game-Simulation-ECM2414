@@ -1,7 +1,6 @@
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Scanner;
-import java.io.File;
-import java.io.FileNotFoundException;
 
 public class CardGame {
     ArrayList<Card> pack;
@@ -49,7 +48,21 @@ public class CardGame {
         }
     }
 
-    public Boolean checkPack(int playerTotal, String packPath) {
+    public Boolean checkPack(int playerTotal, String packPath) throws IOException {
+        int lengthValue = playerTotal * 8;
+        int noOfLines = 0;
+        BufferedReader reader = new BufferedReader(new FileReader(packPath));
+        reader.mark(0);
+        while (reader.readLine() != null) {
+            noOfLines++;
+        }
+        reader.reset();
+        if (lengthValue != noOfLines) {
+            return false;
+        } else {
+            continue;
+        }
+
 
     }
 }
