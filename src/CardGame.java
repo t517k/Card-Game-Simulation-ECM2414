@@ -19,6 +19,7 @@ public class CardGame {
                 int input = Integer.parseInt(playerNumberin.nextLine());
                 if (input > 1) {
                     currentGame.playerTotal = input;
+                    playerNumberin.close();
                     break;
                 } else {
                     System.out.println("Invalid input! Please enter a valid number of players greater than 1!");
@@ -32,6 +33,10 @@ public class CardGame {
                 System.out.println("Enter path of the chosen pack file:");
                 String input = playerNumberin.nextLine();
                 File packFile = new File(input);
+                Scanner test = new Scanner(packFile);
+                test.close();
+                currentGame.packPath = input;
+                break;
             } catch  (FileNotFoundException e) {
                 System.out.println("Invalid path! Please enter a valid path!");
             }
@@ -47,11 +52,11 @@ public class CardGame {
                 pack.add(card);
             }
         } catch (FileNotFoundException e) {
-            System.out.println("File not found!");
+            System.out.println("File open error!");
         }
     }
 
-    public Boolean checkPack(int playerTotal, String packPath) throws IOException {
+    public boolean checkPack(int playerTotal, String packPath) throws IOException {
         int lengthValue = playerTotal * 8;
         int noOfLines = 0;
         BufferedReader reader = new BufferedReader(new FileReader(packPath));
@@ -61,11 +66,22 @@ public class CardGame {
         }
         reader.reset();
         if (lengthValue != noOfLines) {
+            System.out.println("Invalid file! File length does not meet required value of No. of players * 8!");
             return false;
-        } else {
-            continue;
         }
-
+        try {
+            while (reader.readLine() != null) {
+                int test = Integer.parseInt(reader.readLine());
+                if (test < 1) {
+                    System.out.println("Invalid file! line contains a negative value!");
+                    return false;
+                }
+            }
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid file! Line value is not of correct integer type!");
+            return false;
+        }
+        return true;
 
     }
 }
