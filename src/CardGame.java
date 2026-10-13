@@ -14,26 +14,29 @@ public class CardGame {
         Scanner playerNumberin = new Scanner(System.in);
         System.out.println("Game Start!");
         while (true) {
-            System.out.println("Enter number of players:");
-            int input = playerNumberin.nextInt();
-            if (input < 1 || !playerNumberin.hasNextInt()) {
-                System.out.println("Invalid input!");
-            } else {
-                currentGame.playerTotal = input;
-                break;
+            try {
+                System.out.print("Enter number of players:");
+                int input = Integer.parseInt(playerNumberin.nextLine());
+                if (input > 1) {
+                    currentGame.playerTotal = input;
+                    break;
+                } else {
+                    System.out.println("Invalid input! Please enter a valid number of players greater than 1!");
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid input! Please enter a value of the integer type!");
             }
         }
         while (true) {
-            System.out.println("Enter path of the chosen pack file:");
-            String input = playerNumberin.nextLine();
             try {
-
-            } catch {
-
+                System.out.println("Enter path of the chosen pack file:");
+                String input = playerNumberin.nextLine();
+                File packFile = new File(input);
+            } catch  (FileNotFoundException e) {
+                System.out.println("Invalid path! Please enter a valid path!");
             }
         }
     }
-
     public void loadPack(int playerTotal, String packPath) {
         try {
             File packFile = new File(packPath);
