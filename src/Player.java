@@ -29,16 +29,35 @@ public class Player implements  Runnable{
         }
     }
 
+    private string createPlayerOutput(){
+    //method might be used to create playeroutput.txt
+}
+
+    private void writeToOutput(){
+    //method might be used to write to playeroutput files
+}
 
     private void takeCard(){
+        int x = 0; //placeholder
+        playerHand.add(4, x);
         //player takes a card from the deck on their left which is their playerId
     }
 
-    private void discardCard(){
-        //player discards a card from the deck on their right which is their playerId + 1
-        // in the case of the last player e.g player 4, if playerId == numPlayers then they discard to deck 1
-    }
+    private int discardCard() {
+        for (int i = 0; i <= 4; i++) {
+            if (playerHand[i] == playerId){
+                i = i + 1;
+            }
+            else{
+                return i;
+            }
+            playerOutput.write("player " + playerId + " discards a " + i + " to deck x") //change to reference of deck that player will discard to
+            //player discards a card from the deck on their right which is their playerId + 1
+            // in the case of the last player e.g player 4, if playerId == numPlayers then they discard to deck 1
+        }
+        return i;
 
+    }
     @Override
     public void run() {
         String filename = "player" + playerId + "_output.txt";
@@ -47,9 +66,11 @@ public class Player implements  Runnable{
 
             playerOutput.write("Player " + playerId + " has started\n");
 
+            hasWon();
             while (!hasWon) {
                 // Your player thread's game logic goes here
-
+                takeCard();
+                discardCard();
                 hasWon(); // Your existing method, if appropriate
             }
 
