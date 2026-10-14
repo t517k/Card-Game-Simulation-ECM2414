@@ -30,7 +30,7 @@ public class Player implements  Runnable{
         return true;
     }
 
-    private string createPlayerOutput() throws IOException {
+    private String createPlayerOutput() throws IOException {
         String filename = "player" + playerId "_output.txt";
         playerOutput = new BufferedWriter(new FileWriter(filename));
     }
@@ -41,7 +41,7 @@ public class Player implements  Runnable{
         playerOutput.flush();
 }
 
-    private void takeCard throws IOException() {
+    private void takeCard() throws IOException {
 
         Card drawnCard = null;
 
