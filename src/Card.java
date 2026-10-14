@@ -7,4 +7,8 @@ public class Card {
         this.cardId = ++numOfCards;
         this.cardValue = cardValue;
     }
+
+    public int getValue(){
+        return cardValue;
+    }
 }

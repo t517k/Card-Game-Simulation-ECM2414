@@ -1,10 +1,7 @@
-import java.io.File;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
 
 public class Player implements  Runnable{
     int playerId;
@@ -17,68 +14,94 @@ public class Player implements  Runnable{
         this.gameOver = gameOver;
     }
 
-    private boolean hasWon(){
-        playerHand firstelement = playerHand.get(0);
-        for (int x = 0; i <=3; i++){
-            if (x.equals(firstelement)){
+    private boolean hasWon() {
+        if (playerHand.size() != 4) {
+            return false;
+        }
+
+        int firstValue = playerHand.get(0).getValue();
+
+        for (int i = 1; i < playerHand.size(); i++) {
+            if (playerHand.get(i).getValue() != firstValue) {
                 return false;
             }
-            else {
-                return true;
-            }
+        }
+
+        return true;
+    }
+
+    private string createPlayerOutput() throws IOException {
+        String filename = "player" + playerId "_output.txt";
+        playerOutput = new BufferedWriter(new FileWriter(filename));
+    }
+
+    private void writeToOutput(String message) throws IOException{
+        playerOutput.write(message);
+        playerOutput.newLine();
+        playerOutput.flush();
+}
+
+    private void takeCard throws IOException() {
+
+        Card drawnCard = null;
+
+        if (drawnCard != null) {
+            playerHand.add(drawnCard);
+            //player takes a card from the deck on their left which is their playerId
+            writeToOutput("player " + playerId + " draws a " + drawnCard + " from deck " + playerId);
         }
     }
 
-    private string createPlayerOutput(){
-    //method might be used to create playeroutput.txt
-}
 
-    private void writeToOutput(){
-    //method might be used to write to playeroutput files
-}
+    private Card discardCard() throws IOException {
+        for (int i = 0; i < playerHand.size(); i++) {
+            Card card = playerHand.get(i);
 
-    private void takeCard(){
-        int x = 0; //placeholder
-        playerHand.add(4, x);
-        //player takes a card from the deck on their left which is their playerId
-    }
+            if (card.getValue() != playerId) {
+                Card discardedCard = playerHand.remove(i);
 
-    private int discardCard() {
-        for (int i = 0; i <= 4; i++) {
-            if (playerHand[i] == playerId){
-                i = i + 1;
+
+                int rightDeck = (playerId % NumOfPlayers) + 1;
+
+                writeToOutput("player " + playerId  + " discards a " + discardedCard.getValue() + " to deck " + rightDeck);
+                return discardedCard;
             }
-            else{
-                return i;
-            }
-            playerOutput.write("player " + playerId + " discards a " + i + " to deck x") //change to reference of deck that player will discard to
-            //player discards a card from the deck on their right which is their playerId + 1
-            // in the case of the last player e.g player 4, if playerId == numPlayers then they discard to deck 1
         }
-        return i;
 
+        return null;
     }
+
     @Override
     public void run() {
-        String filename = "player" + playerId + "_output.txt";
+            if (hasWon()) {
+                System.out.println("Player " + playerId + " wins");
 
-        try (FileWriter playerOutput = new FileWriter(filename)) {
+                gameOver.set(true);
+                return;
+            }
+        try () {
+            createPlayerOutput();
+            writeToOutput("player " + playerId + " has started");
+            writeToOutput("player " +  playerId + " initial hand " + playerHand);
 
-            playerOutput.write("Player " + playerId + " has started\n");
-
-            hasWon();
-            while (!hasWon) {
-                // Your player thread's game logic goes here
+            while (!gameOver.get()) {
                 takeCard();
-                discardCard();
-                hasWon(); // Your existing method, if appropriate
+                Card discarded = discardCard(); //replace discard once deck logic is finished and stuff
+                hasWon();
             }
 
-            playerOutput.write("Player " + playerId + " has finished\n");
+            writeToOutput("Player " + playerId + " has finished");
+            writeToOutput("Player " + playerId + " final hand: " + playerHand);
 
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            try {
+                if (playerOutput != null) {
+                    playerOutput.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
-
-        System.out.println("Player " + playerId + " has won, with hand " + playerHand);
     }
