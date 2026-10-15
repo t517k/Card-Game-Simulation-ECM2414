@@ -9,7 +9,7 @@ public class CardGame {
     int deckTotal;
     String packPath;
 
-    static void main(String[] args) {
+    static void main(String[] args) throws IOException {
         CardGame currentGame = new CardGame();
         Scanner playerNumberin = new Scanner(System.in);
         System.out.println("Game Start!");
@@ -28,7 +28,7 @@ public class CardGame {
                 System.out.println("Invalid input! Please enter a value of the integer type!");
             }
         }
-        do while (true) {
+        do {
             try {
                 System.out.println("Enter path of the chosen pack file:");
                 String input = playerNumberin.nextLine();
@@ -36,12 +36,11 @@ public class CardGame {
                 Scanner test = new Scanner(packFile);
                 test.close();
                 currentGame.packPath = input;
-                break;
             } catch  (FileNotFoundException e) {
                 System.out.println("Invalid path! Please enter a valid path!");
             }
-        }
-
+        } while (!currentGame.checkPack(currentGame.playerTotal, currentGame.packPath));
+        currentGame.loadPack(currentGame.playerTotal,  currentGame.packPath);
     }
 
     public void loadPack(int playerTotal, String packPath) {
