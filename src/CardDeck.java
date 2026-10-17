@@ -1,4 +1,7 @@
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
@@ -42,5 +45,12 @@ public class CardDeck {
     // Returns this deck's ID
     public int getDeckId() {
         return deckId;
+    }
+
+    public void deckOutput() throws IOException {
+        String filename = "deck" + deckId + "_output.txt";
+        BufferedWriter writer = new BufferedWriter(new FileWriter(filename));
+        writer.write("Deck " + deckId + " contents: " + cards);
+        writer.close();
     }
 }

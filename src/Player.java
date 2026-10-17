@@ -3,6 +3,7 @@ import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Player implements  Runnable {
+    static int winnerId;
     int playerId;
     private final AtomicBoolean gameOver;
     private final CardDeck leftDeck;
@@ -31,7 +32,7 @@ public class Player implements  Runnable {
                 return false;
             }
         }
-
+        winnerId = playerId;
         return true;
     }
 
@@ -49,7 +50,6 @@ public class Player implements  Runnable {
         playerOutput.newLine();
         playerOutput.flush();
     }
-
 
     private void takeTurn() throws IOException {
 
@@ -69,7 +69,7 @@ public class Player implements  Runnable {
 
             playerHand.add(drawnCard);
 
-            writeToOutput("player " + playerId + " draws a " + drawnCard.getValue() + " from deck " + leftDeck.getDeckId());
+            writeToOutput("Player " + playerId + " draws a " + drawnCard.getValue() + " from deck " + leftDeck.getDeckId());
 
             // Select and remove a card to discard
             Card discardedCard = null;
@@ -91,7 +91,9 @@ public class Player implements  Runnable {
             // Add the discarded card to the right deck
             rightDeck.addCard(discardedCard);
 
-            writeToOutput("player " + playerId + " discards a " + discardedCard.getValue() + " to deck " + rightDeck.getDeckId());
+            writeToOutput("Player " + playerId + " discards a " + discardedCard.getValue() + " to deck " + rightDeck.getDeckId());
+
+            writeToOutput("Player " + playerId + "'s current hand is: " + playerHand);
 
             // Check for a winner before allowing another turn
             if (hasWon()) {
@@ -101,7 +103,6 @@ public class Player implements  Runnable {
             }
         }
     }
-
 
     @Override
     public void run() {
@@ -123,7 +124,9 @@ public class Player implements  Runnable {
             while (!gameOver.get()) {
                 takeTurn();
             }
-
+            if (playerId != winnerId) {
+                writeToOutput("Player " + winnerId + " has informed Player " + playerId + " that Player " + winnerId + " has won!");
+            }
             writeToOutput("Player " + playerId + " has finished");
             writeToOutput("Player " + playerId + " final hand: " + playerHand);
 

@@ -1,4 +1,3 @@
-
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Scanner;
@@ -177,7 +176,7 @@ public class CardGame {
     }
 
     // Start every player thread
-    private void startGame() {
+    private void startGame() throws IOException {
 
         ArrayList<Thread> threads = new ArrayList<>();
 
@@ -198,6 +197,9 @@ public class CardGame {
             }
         }
 
+        for (CardDeck deck : decks) {
+            deck.deckOutput();
+        }
         System.out.println("Game finished.");
     }
 }
