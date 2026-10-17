@@ -1,17 +1,22 @@
 import java.io.*;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class Player implements  Runnable{
+public class Player implements  Runnable {
     int playerId;
-    static int NumOfPlayers = 0;
     private final AtomicBoolean gameOver;
-    ArrayList<Card> playerHand;
+    private final CardDeck leftDeck;
+    private final CardDeck rightDeck;
+    private final Object turnLock;
+    private BufferedWriter playerOutput;
+    ArrayList<Card> playerHand = new ArrayList<>();
 
-    public Player(int NumOfPlayers, AtomicBoolean gameOver){
-        this.playerId = +NumOfPlayers;
+    public Player(int playerId, AtomicBoolean gameOver, CardDeck leftDeck, CardDeck rightDeck, Object turnLock) {
+        this.playerId = playerId;
         this.gameOver = gameOver;
+        this.leftDeck = leftDeck;
+        this.rightDeck = rightDeck;
+        this.turnLock = turnLock;
     }
 
     private boolean hasWon() {
@@ -30,64 +35,93 @@ public class Player implements  Runnable{
         return true;
     }
 
-    private String createPlayerOutput() throws IOException {
-        String filename = "player" + playerId "_output.txt";
+    public void addInitialCard(Card card) {
+        playerHand.add(card);
+    }
+
+    private void createPlayerOutput() throws IOException {
+        String filename = "player" + playerId + "_output.txt";
         playerOutput = new BufferedWriter(new FileWriter(filename));
     }
 
-    private void writeToOutput(String message) throws IOException{
+    private void writeToOutput(String message) throws IOException {
         playerOutput.write(message);
         playerOutput.newLine();
         playerOutput.flush();
-}
-
-    private void takeCard() throws IOException {
-
-        Card drawnCard = null;
-
-        if (drawnCard != null) {
-            playerHand.add(drawnCard);
-            //player takes a card from the deck on their left which is their playerId
-            writeToOutput("player " + playerId + " draws a " + drawnCard + " from deck " + playerId);
-        }
     }
 
 
-    private Card discardCard() throws IOException {
-        for (int i = 0; i < playerHand.size(); i++) {
-            Card card = playerHand.get(i);
+    private void takeTurn() throws IOException {
 
-            if (card.getValue() != playerId) {
-                Card discardedCard = playerHand.remove(i);
+        synchronized (turnLock) {
 
+            // Another player may have won while this thread waited
+            if (gameOver.get()) {
+                return;
+            }
 
-                int rightDeck = (playerId % NumOfPlayers) + 1;
+            // Draw a card from the left deck
+            Card drawnCard = leftDeck.drawCard();
 
-                writeToOutput("player " + playerId  + " discards a " + discardedCard.getValue() + " to deck " + rightDeck);
-                return discardedCard;
+            if (drawnCard == null) {
+                throw new IllegalStateException("Left deck is empty for player " + playerId);
+            }
+
+            playerHand.add(drawnCard);
+
+            writeToOutput("player " + playerId + " draws a " + drawnCard.getValue() + " from deck " + leftDeck.getDeckId());
+
+            // Select and remove a card to discard
+            Card discardedCard = null;
+
+            for (int i = 0; i < playerHand.size(); i++) {
+                Card card = playerHand.get(i);
+
+                if (card.getValue() != playerId) {
+                    discardedCard = playerHand.remove(i);
+                    break;
+                }
+            }
+
+            if (discardedCard == null) {
+                // No card could be discarded under the current rule
+                throw new IllegalStateException("No discard available for player " + playerId);
+            }
+
+            // Add the discarded card to the right deck
+            rightDeck.addCard(discardedCard);
+
+            writeToOutput("player " + playerId + " discards a " + discardedCard.getValue() + " to deck " + rightDeck.getDeckId());
+
+            // Check for a winner before allowing another turn
+            if (hasWon()) {
+                writeToOutput("Player " + playerId + " wins!");
+                System.out.println("Player " + playerId + " wins!");
+                gameOver.set(true);
             }
         }
-
-        return null;
     }
+
 
     @Override
     public void run() {
-            if (hasWon()) {
-                System.out.println("Player " + playerId + " wins");
 
-                gameOver.set(true);
-                return;
-            }
-        try () {
+        try {
             createPlayerOutput();
-            writeToOutput("player " + playerId + " has started");
-            writeToOutput("player " +  playerId + " initial hand " + playerHand);
+
+            writeToOutput("Player " + playerId + " has started");
+            writeToOutput("Player " + playerId + " initial hand: " + playerHand);
+
+            synchronized (turnLock) {
+                if (hasWon()) {
+                    writeToOutput("Player " + playerId + " wins!");
+                    System.out.println("Player " + playerId + " wins!");
+                    gameOver.set(true);
+                }
+            }
 
             while (!gameOver.get()) {
-                takeCard();
-                Card discarded = discardCard(); //replace discard once deck logic is finished and stuff
-                hasWon();
+                takeTurn();
             }
 
             writeToOutput("Player " + playerId + " has finished");
@@ -95,6 +129,7 @@ public class Player implements  Runnable{
 
         } catch (IOException e) {
             e.printStackTrace();
+
         } finally {
             try {
                 if (playerOutput != null) {
@@ -105,3 +140,4 @@ public class Player implements  Runnable{
             }
         }
     }
+}

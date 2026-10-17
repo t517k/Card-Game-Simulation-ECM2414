@@ -1,87 +1,203 @@
+
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Scanner;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CardGame {
-    ArrayList<Card> pack;
-    ArrayList<Card> decks;
+
+    ArrayList<Card> pack = new ArrayList<>();
+    ArrayList<CardDeck> decks = new ArrayList<>();
+    ArrayList<Player> players = new ArrayList<>();
+
     int playerTotal;
     int deckTotal;
     String packPath;
 
-    static void main(String[] args) throws IOException {
+    private final AtomicBoolean gameOver = new AtomicBoolean(false);
+    private final Object turnLock = new Object();
+
+    public static void main(String[] args) throws IOException {
         CardGame currentGame = new CardGame();
-        Scanner playerNumberin = new Scanner(System.in);
-        System.out.println("Game Start!");
-        while (true) {
-            try {
-                System.out.print("Enter number of players:");
-                int input = Integer.parseInt(playerNumberin.nextLine());
-                if (input > 1) {
-                    currentGame.playerTotal = input;
-                    playerNumberin.close();
-                    break;
-                } else {
-                    System.out.println("Invalid input! Please enter a valid number of players greater than 1!");
+
+        try (Scanner input = new Scanner(System.in)) {
+
+            System.out.println("Game Start!");
+
+            // Get the number of players
+            while (true) {
+                try {
+                    System.out.print("Enter number of players: ");
+                    int number = Integer.parseInt(input.nextLine());
+
+                    if (number > 1) {
+                        currentGame.playerTotal = number;
+                        break;
+                    }
+
+                    System.out.println("Enter a number greater than 1.");
+
+                } catch (NumberFormatException e) {
+                    System.out.println("Please enter a valid integer.");
                 }
-            } catch (NumberFormatException e) {
-                System.out.println("Invalid input! Please enter a value of the integer type!");
             }
-        }
-        do {
-            try {
+
+            // Get a valid pack file
+            while (true) {
                 System.out.println("Enter path of the chosen pack file:");
-                String input = playerNumberin.nextLine();
-                File packFile = new File(input);
-                Scanner test = new Scanner(packFile);
-                test.close();
-                currentGame.packPath = input;
-            } catch  (FileNotFoundException e) {
-                System.out.println("Invalid path! Please enter a valid path!");
+                String path = input.nextLine();
+
+                if (currentGame.checkPack(currentGame.playerTotal, path)) {
+                    currentGame.packPath = path;
+                    break;
+                }
+
+                System.out.println("Invalid pack. Please try again.");
             }
-        } while (!currentGame.checkPack(currentGame.playerTotal, currentGame.packPath));
-        currentGame.loadPack(currentGame.playerTotal,  currentGame.packPath);
+        }
+
+        currentGame.loadPack(
+                currentGame.playerTotal,
+                currentGame.packPath
+        );
+
+        currentGame.initialiseGame();
+        currentGame.startGame();
     }
 
-    public void loadPack(int playerTotal, String packPath) {
-        try {
-            File packFile = new File(packPath);
-            Scanner fileReader = new Scanner(packFile);
-            while (fileReader.hasNextLine()) {
-                int cardValue = fileReader.nextInt();
-                Card card = new Card(playerTotal, cardValue);
-                pack.add(card);
-            }
-        } catch (FileNotFoundException e) {
-            System.out.println("File open error!");
-        }
-    }
+    // Validate the pack file
+    private boolean checkPack(int playerTotal, String packPath) {
+        int requiredCards = playerTotal * 8;
+        int count = 0;
 
-    private boolean checkPack(int playerTotal, String packPath) throws IOException {
-        int lengthValue = playerTotal * 8;
-        int noOfLines = 0;
-        BufferedReader reader = new BufferedReader(new FileReader(packPath));
-        reader.mark(0);
-        while (reader.readLine() != null) {
-            noOfLines++;
-        }
-        reader.reset();
-        if (lengthValue != noOfLines) {
-            System.out.println("Invalid file! File length does not meet required value of No. of players * 8!");
-            return false;
-        }
-        try {
-            while (reader.readLine() != null) {
-                int test = Integer.parseInt(reader.readLine());
-                if (test < 1) {
-                    System.out.println("Invalid file! line contains a negative value!");
+        try (Scanner reader = new Scanner(new File(packPath))) {
+
+            while (reader.hasNext()) {
+                if (!reader.hasNextInt()) {
+                    System.out.println(
+                            "Invalid pack: every entry must be an integer."
+                    );
                     return false;
                 }
+
+                int value = reader.nextInt();
+
+                if (value < 0) {
+                    System.out.println(
+                            "Invalid pack: card values cannot be negative."
+                    );
+                    return false;
+                }
+
+                count++;
             }
-        } catch (NumberFormatException e) {
-            System.out.println("Invalid file! Line value is not of correct integer type!");
+
+            if (count != requiredCards) {
+                System.out.println(
+                        "Invalid pack: expected " + requiredCards
+                                + " cards, found " + count + "."
+                );
+                return false;
+            }
+
+            return true;
+
+        } catch (FileNotFoundException e) {
+            System.out.println("File not found.");
             return false;
         }
-        return true;
+    }
+
+    // Load cards from the pack file
+    public void loadPack(int playerTotal, String packPath) {
+        pack.clear();
+
+        try (Scanner reader = new Scanner(new File(packPath))) {
+
+            while (reader.hasNextInt()) {
+                int cardValue = reader.nextInt();
+
+                // Preserving your existing Card constructor
+                Card card = new Card(cardValue);
+                pack.add(card);
+            }
+
+        } catch (FileNotFoundException e) {
+            throw new IllegalStateException(
+                    "Could not load the validated pack.", e
+            );
+        }
+    }
+
+    // Create players and decks, then deal the cards
+    private void initialiseGame() {
+
+        deckTotal = playerTotal;
+
+        // Create one deck and one player for each player number
+        for (int i = 0; i < playerTotal; i++) {
+            decks.add(new CardDeck());
+        }
+
+        for (int i = 0; i < playerTotal; i++) {
+
+            CardDeck leftDeck = decks.get(i);
+            CardDeck rightDeck = decks.get(
+                    (i + 1) % playerTotal
+            );
+
+            Player player = new Player(
+                    i + 1,
+                    gameOver,
+                    leftDeck,
+                    rightDeck,
+                    turnLock
+            );
+
+            players.add(player);
+        }
+
+        // Deal four cards to each player, round-robin
+        for (int round = 0; round < 4; round++) {
+            for (Player player : players) {
+                player.addInitialCard(pack.remove(0));
+            }
+        }
+
+        // Distribute remaining cards to decks, round-robin
+        int deckIndex = 0;
+
+        while (!pack.isEmpty()) {
+            decks.get(deckIndex).addCard(pack.remove(0));
+
+            deckIndex = (deckIndex + 1) % deckTotal;
+        }
+
+        System.out.println("Cards dealt successfully.");
+    }
+
+    // Start every player thread
+    private void startGame() {
+
+        ArrayList<Thread> threads = new ArrayList<>();
+
+        for (Player player : players) {
+            Thread thread = new Thread(player);
+            threads.add(thread);
+            thread.start();
+        }
+
+        // Wait for all player threads to finish
+        for (Thread thread : threads) {
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                gameOver.set(true);
+                return;
+            }
+        }
+
+        System.out.println("Game finished.");
     }
 }

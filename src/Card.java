@@ -1,14 +1,20 @@
 public class Card {
-    static int numOfCards = 0;
-    int cardId;
-    int cardValue;
+    private static int numOfCards = 0;
 
-    public Card(int numOfCards, int cardValue) {
+    private final int cardId;
+    private final int cardValue;
+
+    public Card(int cardValue) {
         this.cardId = ++numOfCards;
         this.cardValue = cardValue;
     }
 
-    public int getValue(){
+    public int getValue() {
         return cardValue;
+    }
+
+    @Override
+    public String toString() {
+        return String.valueOf(cardValue);
     }
 }
