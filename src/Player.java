@@ -23,6 +23,14 @@ public class Player implements  Runnable {
         this.turnLock = turnLock;
     }
 
+    public int handSize() {
+        return playerHand.size();
+    }
+
+    public ArrayList<Card> getPlayerHand() {
+        return playerHand;
+    }
+
     //checks for winning hand
     private boolean hasWon() {
         if (playerHand.size() != 4) { //is hand exactly 4 card

@@ -79,4 +79,12 @@ public class CardDeck {
             }
         }
     }
+
+    public Card getTopCard() {
+        return cards.getFirst();
+    }
+
+    public Card getBottomCard() {
+        return cards.getLast();
+    }
 }

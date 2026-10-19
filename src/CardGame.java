@@ -3,7 +3,6 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class CardGame {
     //variables used throughout the game
@@ -19,7 +18,7 @@ public class CardGame {
     private final Object turnLock = new Object();
 
     //execution begins here
-    public static void main(String[] args) throws IOException {
+    public static void main() throws IOException {
         CardGame currentGame = new CardGame();
 
         try (Scanner input = new Scanner(System.in)) {
@@ -193,7 +192,7 @@ public class CardGame {
             }
         }
 
-        //records the final state of each deck and outputs that the game has f
+        //records the final state of each deck and outputs that the game has finished
         for (CardDeck deck : decks) {
             deck.deckOutput();
         }
