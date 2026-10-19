@@ -3,6 +3,7 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class CardGame {
     //variables used throughout the game
@@ -22,7 +23,7 @@ public class CardGame {
         CardGame currentGame = new CardGame();
 
         try (Scanner input = new Scanner(System.in)) {
-        //
+        //starts the game
             System.out.println("Game Start!");
 
             // gets the number of players and will loop infinitely until a valid input is entered

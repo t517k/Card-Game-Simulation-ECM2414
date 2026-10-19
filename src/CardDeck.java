@@ -4,6 +4,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 
 public class CardDeck {
@@ -22,6 +23,17 @@ public class CardDeck {
     //synchronised ensures that only one thread at a time can access this particular deck object
     public synchronized void addCard(Card card) {
         cards.addLast(card);
+        notifyAll();
+    }
+
+    //waits until a card is available in the deck
+    //only one threw at a time can execute it
+    public synchronized void waitForCard(AtomicBoolean gameOver)
+            throws InterruptedException {
+        //pauses current thread until deck has a card or game is over
+        while (cards.isEmpty() && !gameOver.get()) {
+            wait();
+        }
     }
 
     //draws a card from the front of the deck
@@ -51,8 +63,20 @@ public class CardDeck {
     //writes the deck's contents to a text file after the game finishes
     public void deckOutput() throws IOException {
         String filename = "deck" + deckId + "_output.txt";
-        BufferedWriter writer = new BufferedWriter(new FileWriter(filename));
-        writer.write("Deck " + deckId + " contents: " + cards);
-        writer.close();
+
+        try (BufferedWriter writer =
+                     new BufferedWriter(new FileWriter(filename))) {
+
+            writer.write("Deck " + deckId + " contents: ");
+
+            boolean firstCard = true;
+            for (Card card : cards) {
+                if (!firstCard) {
+                    writer.write(" ");
+                }
+                writer.write(String.valueOf(card.getValue()));
+                firstCard = false;
+            }
+        }
     }
 }

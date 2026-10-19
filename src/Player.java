@@ -36,9 +36,23 @@ public class Player implements  Runnable {
                 return false;
             }
         }
-        winnerId = playerId; //player wins if all 4 cards are the same
-        return true;
+
+        return true; //player wins if all 4 cards are the same
     }
+
+    //only first player that wins can declare victory to ensure that only one winner is declared
+    private boolean declareWinner() {
+        synchronized (turnLock) {
+            if (!gameOver.get() && hasWon()) {
+                winnerId = playerId;
+                gameOver.set(true);
+                return true;
+            }
+
+            return false;
+        }
+    }
+
 
     //adds card to players hand
     public void addInitialCard(Card card) {
@@ -58,99 +72,151 @@ public class Player implements  Runnable {
         playerOutput.flush(); //pushes text to the file so that it is available to read without waiting for buffer to fill
     }
 
-    private void takeTurn() throws IOException {
-        //ensures that only one player at a time can execute the protected section
-        synchronized (turnLock) {
 
-            //prevents a player from taking a go if another player has won
-            if (gameOver.get()) {
-                return;
-            }
+    private void takeTurn() throws IOException, InterruptedException {
 
-            //draws card from the deck on the left
-            Card drawnCard = leftDeck.drawCard();
-
-            //checks if deck is empty
-            if (drawnCard == null) {
-                throw new IllegalStateException("Left deck is empty for player " + playerId);
-            }
-            //card added to player's hand
-            playerHand.add(drawnCard);
-            //records the card drawn in the output file
-            writeToOutput("Player " + playerId + " draws a " + drawnCard.getValue() + " from deck " + leftDeck.getDeckId());
-
-            // selects and discards a card
-            Card discardedCard = null;
-
-            //searches for a card that doesn't match the player's id
-            for (int i = 0; i < playerHand.size(); i++) {
-                Card card = playerHand.get(i);
-
-                //when a card with a different value is found it is removed from the hand
-                if (card.getValue() != playerId) {
-                    discardedCard = playerHand.remove(i);
-                    break;
+        while (true) {
+            //waits for a card
+            synchronized (turnLock) {
+                while (leftDeck.isEmpty() && !gameOver.get()) {
+                    turnLock.wait();
+                }
+                if (gameOver.get()) {
+                    return;
                 }
             }
 
-            //in the case where all 5 cards match the player's id
-            if (discardedCard == null) {
-                // No card could be discarded under the current rule
-                throw new IllegalStateException("No discard available for player " + playerId);
+            //locks both decks to avoid deadlock
+            CardDeck firstDeck =
+                    leftDeck.getDeckId() < rightDeck.getDeckId()
+                            ? leftDeck : rightDeck;
+
+            CardDeck secondDeck =
+                    firstDeck == leftDeck ? rightDeck : leftDeck;
+
+            //when this becomes true, the player has finished drawing and discarding
+            boolean actionCompleted = false;
+
+            //makes sure the player has the locks for both decks before proceeding
+            synchronized (firstDeck) {
+                synchronized (secondDeck) {
+
+                    //checks if another player has already won
+                    if (gameOver.get()) {
+                        return;
+                    }
+                    //checks again because another player could've drawn the last card between this check and the last
+                    if (leftDeck.isEmpty()) {
+                        continue;
+                    }
+
+                    //draws a card and adds it to players hand
+                    Card drawnCard = leftDeck.drawCard();
+                    playerHand.add(drawnCard);
+                    writeToOutput("Player " + playerId + " draws a " + drawnCard.getValue() + " from deck " + leftDeck.getDeckId());
+
+                    //chooses card to discard from player's hand
+                    Card discardedCard = null;
+
+                    //finds the first card that differs from the player id and discards it
+                    for (int i = 0; i < playerHand.size(); i++) {
+                        if (playerHand.get(i).getValue() != playerId) {
+                            discardedCard = playerHand.remove(i);
+                            break;
+                        }
+                    }
+                    //if no suitable card found then exception thrown
+                    if (discardedCard == null) {
+                        throw new IllegalStateException(
+                                "No discard available for player " + playerId
+                        );
+                    }
+
+                    //discards a card before releasing deck lock
+                    rightDeck.addCard(discardedCard);
+
+                    writeToOutput("Player " + playerId + " discards a " + discardedCard.getValue() + " to deck " + rightDeck.getDeckId());
+
+                    writeToOutput("Player " + playerId + "'s current hand is: " + playerHand);
+                    //actionCompleted is now true so the player's go is over
+                    actionCompleted = true;
+                }
+            }
+            //checks if player has a winning hand and wakes threads waiting on turnlock
+            if (actionCompleted) {
+                synchronized (turnLock) {
+
+                    if (declareWinner()) {
+                        writeToOutput("Player " + playerId + " wins!");
+                        System.out.println("Player " + playerId + " wins!");
+                    }
+
+
+                    turnLock.notifyAll();
+                }
             }
 
-            // adds the discarded card to the right deck
-            rightDeck.addCard(discardedCard);
-            //records discarded card and plauer hand in corresponding output file
-            writeToOutput("Player " + playerId + " discards a " + discardedCard.getValue() + " to deck " + rightDeck.getDeckId());
-            writeToOutput("Player " + playerId + "'s current hand is: " + playerHand);
-
-            //checks for a winner before another turn
-            if (hasWon()) {
-                writeToOutput("Player " + playerId + " wins!");
-                System.out.println("Player " + playerId + " wins!");
-                gameOver.set(true);
-            }
+            return;
         }
     }
+
 
     @Override
     public void run() {
         //initialises the player output
         try {
+            //player output is created
             createPlayerOutput();
+
             writeToOutput("Player " + playerId + " has started");
             writeToOutput("Player " + playerId + " initial hand: " + playerHand);
 
-            //checks the initial hand
+            boolean alreadyFinished;
+
             synchronized (turnLock) {
-                if (hasWon()) {
-                    writeToOutput("Player " + playerId + " wins!");
-                    System.out.println("Player " + playerId + " wins!");
-                    gameOver.set(true);
+                //checks the initial hand
+                if (!gameOver.get()) {
+                    declareWinner();
                 }
+
+                alreadyFinished = gameOver.get();
             }
 
-            //repeats turn until there is a winnr
+            //used to check if a player has already won at the start of the game
+            if (alreadyFinished) {
+                if (playerId == winnerId) {
+                    writeToOutput("Player " + playerId + " wins");
+                    System.out.println("Player " + playerId + " wins");
+                } else {
+                    writeToOutput("Player " + winnerId
+                            + " has informed Player " + playerId
+                            + " that Player " + winnerId + " has won!");
+                }
+
+                //outputs player's final hand
+                writeToOutput("Player " + playerId + " final hand: " + playerHand);
+                return;
+            }
+
+            //players keep on taking turns until a player has one
             while (!gameOver.get()) {
                 takeTurn();
             }
-            //informs other players that a player has won
+            //outputs once player has won
             if (playerId != winnerId) {
                 writeToOutput("Player " + winnerId + " has informed Player " + playerId + " that Player " + winnerId + " has won");
             }
-            //records the final hand
             writeToOutput("Player " + playerId + " has finished");
             writeToOutput("Player " + playerId + " final hand: " + playerHand);
 
-        //catches any file related errors
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         } catch (IOException e) {
             e.printStackTrace();
-
         } finally {
             try {
                 if (playerOutput != null) {
-                    playerOutput.close(); //closes player output file
+                    playerOutput.close();
                 }
             } catch (IOException e) {
                 e.printStackTrace();
